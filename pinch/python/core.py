@@ -1,6 +1,7 @@
 import numpy as np
 import io
-from utitlity import OrderedSet, Graph
+from bitarray import bitarray
+from utility import OrderedSet, Graph
             
 class CoreObject(object):
     
@@ -65,33 +66,33 @@ def ContextModel(Model):
 
 class Coder(CoreObject):
     
-    EOF = -1
+    EOF = 1
+    byteorder = 'little'
     
     def reset(self):
-        self.bits = bitarray()
+        self.bits = bitarray(endian=Coder.byteorder)
     
     def encode(self, code, p):
         # p is np vector
-        self.bits += bitarray.frombytes(chr(code).encode())
-        return NotImplemented
+        b = code.to_bytes(1, Coder.byteorder)
+        self.bits.frombytes(b)
     
-    def fetch(end=False):
+    def fetch(self, end=False):
         # gets and removes bytes from the buffer
         # if end then finishes the coding op
         if end:
-            return self.bits.tobtyes()
+            return self.bits.tobytes()
         else:
             nbytes = self.bits.length() // 8
-            bits = self.bits[:nbytes]
-            self.bits = self.bits[nbytes:]
+            nbits = nbytes * 8
+            bits = self.bits[:nbits]
+            self.bits = self.bits[nbits:]
             return bits.tobytes()
     
     def decode(self, cipher, p):
-        ch = None
-        for ch in cipher:
-            break
-        if ch is not None:
-            code = ord(ch)
+        b = cipher.read(1)
+        if len(b) > 0:
+            code = int.from_bytes(b, Coder.byteorder)
         else:
             code = Coder.EOF
         # returns code, ie index of string in p
@@ -99,42 +100,95 @@ class Coder(CoreObject):
         
 class Compressor(CoreObject):
     
-    def compress(plain, model, coder, cipher=io.BytesIO()):
+    def reset(self):
+        pass
+    
+    def encode(self, byte, model):
+        return to_write
+    
+    def decode(self,  model)
+    
+    def compress(self, plain, model, coder, cipher=io.BytesIO()):
+        print(cipher)
+        pos = plain.tell()
+        cpos = cipher.tell()
+        plain.seek(-1, 2)
+        length = plain.tell() - pos
+        plain.seek(pos)
         model.reset()
         coder.reset()
-        for ch in plain:
+        b = plain.read(1)
+        while len(b) > 0:
+            ch = chr(int.from_bytes(b, Coder.byteorder))
+            #ch = b.decode()
             p = model.predict()
             code = model.vocab.index(ch)
             coder.encode(code, p)
             model.feed(ch)
-            cipher.write(coder.fetch())
+            bs = coder.fetch()
+            cipher.write(bs)
+            b = plain.read(1)
+            print('compress {}/{}'.format(plain.tell()-pos, length), end='\r', flush=True)
+        coder.encode(Coder.EOF, p)
         cipher.write(coder.fetch(end=True))
+        cipher.seek(-1, 2)
+        clength = cipher.tell() - cpos
+        cipher.seek(cpos)
+        print('compress done. {}B'.format(clength))
         return cipher
         
-    def decompress(cipher, model, coder, plain=io.BytesIO()):
+    def decompress(self, cipher, model, coder, plain=io.BytesIO()):
+        print(cipher)
+        pos = plain.tell()
+        cpos = cipher.tell()
+        cipher.seek(-1, 2)
+        clength = cipher.tell() - cpos
+        cipher.seek(cpos)
         model.reset()
         coder.reset()
         code = 0
-        while code != Coder.EOF
+        while code != Coder.EOF:
             p = model.predict()
             code = coder.decode(cipher, p)
             if code != Coder.EOF:
                 ch = model.vocab[code]
                 plain.write(ch.encode())
                 model.feed(ch)
+            print('decompress {}/{}'.format(cipher.tell()-cpos, clength), end='\r', flush=True)
+        cipher.seek(cpos)
+        length = plain.tell() - pos
+        cipher.seek(pos)
+        print('decompress done. {}B'.format(plain.tell()-pos, length), end='\r', flush=True)
         return plain
         
-    def test(plain, model, coder, cipher=io.BytesIO()):
-        print(self)
+    def test(self, plain, model, coder, cipher=io.BytesIO()):
+        print('{}: model={} coder={}'.format(self, model, coder))
+        cpos = cipher.tell()
         pos = plain.tell()
+        #print(plain.read())
+        plain.seek(pos)
         self.compress(plain, model, coder, cipher)
         plain.seek(pos)
+        cipher.seek(cpos)
+        #print(cipher.read())
+        cipher.seek(cpos)
         plain2 = self.decompress(cipher, model, coder)
-        plain2.seek(0)
-        success = plain.read() == plain2.read()
+        plain2.seek(pos)
+        if plain.read() == plain2.read():
+            print('success')
+            success = True
+        else:
+            print('fail')
+            print('[...] '+plain2.read()[-100])
+            success = False
         plain.seek(pos)
-        cipher.seek(0)
-        print('success')
+        cipher.seek(cpos)
+        plain2.seek(pos)
         return success
     
 def main():
+    with open('texts/dickens-selection', 'rb') as f:
+        Compressor().test(f, Model(), Coder())
+    
+if __name__ == '__main__':
+    main()

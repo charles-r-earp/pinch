@@ -17,9 +17,25 @@ class OrderedSet(OrderedDict):
         s += '])'
         return s
     
+    def __getitem__(self, index):
+        i = 0
+        for item in self:
+            if i == index:
+                return item
+            i += 1
+    
     def add(self, item):
         if item not in self:
             self[item] = None
+            
+    def index(self, item):
+        index = 0
+        for i in self:
+            if i == item:
+                return index
+            index += 1
+        raise IndexError('{} not found in {}.'.format(item, self))
+        
             
 class Graph(OrderedDict):
     
