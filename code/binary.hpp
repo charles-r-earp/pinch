@@ -3,9 +3,13 @@
 #include <istream>
 #include <ostream>
 
+
+//#include <typeinfo>
+//#include <iostream>
+
 namespace pinch {
   namespace code {
-    namespace binary {
+    struct binary {
       class coder {
       public:
         static const u32 pmax = 4095;
@@ -67,24 +71,38 @@ namespace pinch {
           return y;
         }
       };
-      void compress(std::istream& in, std::ostream& out, u32 p) {
-          encoder e;
-          int c = in.get();
-          while (in) {
-            e.encode(0, out, p);
-            for (int i=7; i>=0; --i)
-              e.encode((c>>i)&1, out, p);
-            c = in.get();
+      template<typename Model>
+      static void compress(std::istream& in, std::ostream& out, Model model) {
+        encoder e;
+        int c = in.get();
+        int bit = -1;
+        u32 p = coder::pmax*model(bit);
+        while (in) {
+          bit = 0;
+          e.encode(bit, out, p);
+          p = coder::pmax*model(bit);
+          for (int i=7; i>=0; --i) {
+            bit = (c>>i)&1;
+            e.encode(bit, out, p);
+            p = coder::pmax*model(bit);
           }
-          e.encode(1, out, p); 
-          e.flush(out);
+          c = in.get();
+        }
+        bit = 1;
+        e.encode(bit, out, p); 
+        e.flush(out);
       }
-      void decompress(std::istream& in, std::ostream& out, u32 p) {
+      template<typename Model>
+      static void decompress(std::istream& in, std::ostream& out, Model model) {
         decoder d;
+        int bit = -1;
+        u32 p = coder::pmax*model(bit);
         while(!d.decode(in, p)) {
           int c=1;
-          while(c<256)
-          c+=c+d.decode(in, p);
+          while(c<256) {
+            c+=c+d.decode(in, p);
+            p = coder::pmax*model(bit);
+          }
           out.put(c-256);
         }
       }
