@@ -1,8 +1,11 @@
 #include "code/binary.hpp"
 //#include "model/binary/basic.hpp"
+#include <ctime>
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <string>
+#include <iomanip>
 
 bool endswith(std::string s, std::string end) {
   if(s.length() >= end.length()) {
@@ -31,6 +34,23 @@ bool match(std::string fname1, std::string fname2) {
     return success;
 }
 
+int file_size(std::string filename) {
+    std::fstream f;
+    f.open(filename, std::fstream::in);
+    f.seekp(0, std::fstream::end);
+    auto pos = f.tellp();
+    f.close();
+    return pos;
+}
+
+template<typename F>
+double stopwatch(F f) {
+    auto start = time(NULL);
+    f();
+    auto end = time(NULL);
+    return difftime(end, start);
+}
+
 template<class Coder>
 struct pinch_interface {
     template<typename Model>
@@ -53,22 +73,26 @@ struct pinch_interface {
     }
     template<typename Model>
     int bench(std::string filename, Model model) {
-      compress(filename, filename+".pinch", Model(model));
-      decompress(filename+".pinch", filename+".out", Model(model));
-      if(match(filename, filename+".out")) {
-        std::cout << "success" << std::endl;
+      auto in_size = file_size(filename);
+      std::cout << "bench " << filename << " " << in_size << " bytes" << std::endl;
+      float compress_time = stopwatch([=](){ compress(filename, filename+".pinch", Model(model)); });
+      auto cipher_size = file_size(filename+".pinch");
+      float percent = (100.0*cipher_size)/in_size;
+      std::cout << std::fixed << std::setprecision(1) << filename+".pinch " << cipher_size << " bytes in " 
+                << compress_time << " s " << percent << "%" << std::endl;
+      float decompress_time = stopwatch([=](){ decompress(filename+".pinch", filename+".out", Model(model)); });
+      auto success = match(filename, filename+".out");
+      std::cout << std::setprecision(1) << filename+".out " << decompress_time << " s " << (success ? "success" : "fail")
+                << std::endl << std::endl;
+      if(success) 
         return 0;
-      }
-      else {
-        std::cout << "fail" << std::endl;
+      else 
         return 1;
-      }
     }
 };
 
 int main(int argc, char** argv) {
   namespace pc = pinch::code;
-  const pc::u32 p = pc::binary::coder::pmax/2; 
   pinch_interface<pc::binary> interface;
   auto model = [](int bit) { return 0.5; };
   if(argc == 2) {
@@ -78,6 +102,7 @@ int main(int argc, char** argv) {
       return 0;
     }
     else {
+      filename = filename.substr(0, filename.length()-6);
       interface.compress(filename+".pinch", filename, model);
       return 0;
     }
