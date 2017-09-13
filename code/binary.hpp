@@ -5,7 +5,7 @@
 
 
 //#include <typeinfo>
-//#include <iostream>
+#include <iostream>
 
 namespace pinch {
   namespace code {
@@ -72,38 +72,48 @@ namespace pinch {
         }
       };
       template<typename Model>
-      static void compress(std::istream& in, std::ostream& out, Model model) {
+      static void compress(std::istream& in, std::ostream& out, Model &model) {
         encoder e;
+        in.seekg(0, std::istream::end);
+        u32 length = in.tellg();
+        in.seekg(0, std::istream::beg);
+        for(int i = 3; i >= 0; --i) {
+            char c = (length>>(8*i));
+            out.put(c);
+        }
         int c = in.get();
         int bit = -1;
         u32 p = coder::pmax*model(bit);
         while (in) {
-          bit = 0;
-          e.encode(bit, out, p);
-          p = coder::pmax*model(bit);
-          for (int i=7; i>=0; --i) {
+          ++length;
+          for(int i = 7; i >= 0; --i) {
             bit = (c>>i)&1;
             e.encode(bit, out, p);
             p = coder::pmax*model(bit);
           }
           c = in.get();
-        }
-        bit = 1;
-        e.encode(bit, out, p); 
+        } 
         e.flush(out);
       }
       template<typename Model>
-      static void decompress(std::istream& in, std::ostream& out, Model model) {
+      static void decompress(std::istream& in, std::ostream& out, Model &model) {
         decoder d;
-        int bit = -1;
+        u32 length = 0;
+        for(int i = 3; i >= 0; --i) {
+            int c = in.get();
+            length |= c << (i*8);
+        }
+        assert(length > 0);
+        int bit = -1, c;
         u32 p = coder::pmax*model(bit);
-        while(!d.decode(in, p)) {
-          int c=1;
-          while(c<256) {
-            c+=c+d.decode(in, p);
+        while(length-->0) {
+          c = 0;
+          for(int i = 7; i >= 0; --i) {
+            bit = d.decode(in, p);
             p = coder::pmax*model(bit);
+            c |= bit<<i;
           }
-          out.put(c-256);
+          out.put(c);
         }
       }
     };

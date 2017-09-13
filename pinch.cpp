@@ -1,5 +1,6 @@
 #include "code/binary.hpp"
-//#include "model/binary/basic.hpp"
+#include "model/binary/nn.hpp"
+#include "model/binary/count_method.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -54,8 +55,13 @@ double stopwatch(F f) {
 template<class Coder>
 struct pinch_interface {
     template<typename Model>
-    void compress(std::string in_name, std::string cipher_name, Model model) {
+    void compress(std::string in_name, std::string cipher_name, Model &model) {
+      const size_t nBufferSize = 16184;
+      char in_buffer[nBufferSize], cipher_buffer[nBufferSize];
+      //f.rdbuf()->pubsetbuf(buffer, nBufferSize);
       std::fstream in, cipher;
+      in.rdbuf()->pubsetbuf(in_buffer, nBufferSize);
+      cipher.rdbuf()->pubsetbuf(cipher_buffer, nBufferSize);
       in.open(in_name, std::fstream::in);
       assert(in.is_open());
       cipher.open(cipher_name, std::fstream::out | std::fstream::trunc);
@@ -63,7 +69,7 @@ struct pinch_interface {
       Coder::compress(in, cipher, model);
     }
     template<typename Model>
-    void decompress(std::string cipher_name, std::string out_name, Model model) {
+    void decompress(std::string cipher_name, std::string out_name, Model &model) {
       std::fstream cipher, out;
       cipher.open(cipher_name, std::fstream::in);
       assert(cipher.is_open());
@@ -72,15 +78,15 @@ struct pinch_interface {
       Coder::decompress(cipher, out, model);
     }
     template<typename Model>
-    int bench(std::string filename, Model model) {
+    int bench(std::string filename, Model &model) {
       auto in_size = file_size(filename);
       std::cout << "bench " << filename << " " << in_size << " bytes" << std::endl;
-      float compress_time = stopwatch([=](){ compress(filename, filename+".pinch", Model(model)); });
+      float compress_time = stopwatch([&](){ compress(filename, filename+".pinch", model); });
       auto cipher_size = file_size(filename+".pinch");
       float percent = (100.0*cipher_size)/in_size;
       std::cout << std::fixed << std::setprecision(1) << filename+".pinch " << cipher_size << " bytes in " 
                 << compress_time << " s " << percent << "%" << std::endl;
-      float decompress_time = stopwatch([=](){ decompress(filename+".pinch", filename+".out", Model(model)); });
+      float decompress_time = stopwatch([&](){ decompress(filename+".pinch", filename+".out", model); });
       auto success = match(filename, filename+".out");
       std::cout << std::setprecision(1) << filename+".out " << decompress_time << " s " << (success ? "success" : "fail")
                 << std::endl << std::endl;
@@ -93,8 +99,11 @@ struct pinch_interface {
 
 int main(int argc, char** argv) {
   namespace pc = pinch::code;
+  namespace pm = pinch::model;
+  pm::binary::nn model;
+  //pm::binary::count_method model;
+  //auto model = [](const int bit) { return 0.4; };
   pinch_interface<pc::binary> interface;
-  auto model = [](int bit) { return 0.5; };
   if(argc == 2) {
     std::string filename = argv[1];
     if(!endswith(filename, ".pinch")) {
