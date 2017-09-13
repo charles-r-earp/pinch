@@ -72,7 +72,7 @@ namespace pinch {
         }
       };
       template<typename Model>
-      static void compress(std::istream& in, std::ostream& out, Model model) {
+      static void compress(std::istream& in, std::ostream& out, Model &model) {
         encoder e;
         in.seekg(0, std::istream::end);
         u32 length = in.tellg();
@@ -96,7 +96,7 @@ namespace pinch {
         e.flush(out);
       }
       template<typename Model>
-      static void decompress(std::istream& in, std::ostream& out, Model model) {
+      static void decompress(std::istream& in, std::ostream& out, Model &model) {
         decoder d;
         u32 length = 0;
         for(int i = 3; i >= 0; --i) {
