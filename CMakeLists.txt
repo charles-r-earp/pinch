@@ -4,7 +4,7 @@ project(pinch)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(pinch pinch.cpp)
-target_include_directories(pinch PUBLIC code model)
+target_include_directories(pinch PUBLIC code model "${CMAKE_BINARY_DIR}/model")
 # caffe2
 # caffe2 -> eigen 
 find_package(Eigen3 REQUIRED)

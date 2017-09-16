@@ -1,6 +1,5 @@
 #include "code/binary.hpp"
-#include "model/binary/nn.hpp"
-#include "model/binary/count_method.hpp"
+#include "model/bin_rnn.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -100,7 +99,7 @@ struct pinch_interface {
 int main(int argc, char** argv) {
   namespace pc = pinch::code;
   namespace pm = pinch::model;
-  pm::binary::nn model;
+  pm::bin_rnn model;
   //pm::binary::count_method model;
   //auto model = [](const int bit) { return 0.4; };
   pinch_interface<pc::binary> interface;
