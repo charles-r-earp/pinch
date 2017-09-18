@@ -1,12 +1,106 @@
 #include "code.hpp"
 #include <cassert>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <iostream>
+
 
 namespace pinch {
   namespace code {
+    class bin_acode {
+    private:
+      std::vector<char> cipher;
+      std::vector<char>::iterator it;
+      static const u32 pmax = 4095;
+      u32 x1 = 0, x= -1, x2 = 0xffffffff;
+    public:
+      int length() {
+        return cipher.size(); 
+      }
+      // encode
+      void write(std::ostream& os) {
+        std::cout << "bin_acode write: ";
+        for (auto byte : cipher)
+            std::cout << u32(byte) << " ";
+        std::cout << std::endl;
+        os.write(cipher.data(), cipher.size());
+        cipher.clear();
+        x1 = 0; x2 = 0xffffffff;
+      }
+      void encode(int y, float p) {
+        std::cout << "bin_acode encode: " << y << " p = " << p << std::endl; 
+        std::cout << "x1 = " << x1 << " x2 = " << x2 << std::endl;
+        u32 pval = pmax * p;
+        if(!pval)
+          pval = 1;
+        const u32 xmid = x1 + ((x2-x1) >> 12) * pval;
+        assert(xmid >= x1 && xmid < x2);
+        if (y)
+          x2=xmid;
+        else
+          x1=xmid+1;
+        
+        while (((x1^x2)&0xff000000)==0) {
+          cipher.push_back(x2>>24);
+          x1<<=8;
+          x2=(x2<<8)+255;
+        }
+        std::cout << "bin_acode done. cipher.size(): " << cipher.size() << std::endl;
+      }
+      void flush() {
+        while (((x1^x2)&0xff000000)==0) {
+          cipher.push_back(x2>>24);
+          x1<<=8;
+          x2=(x2<<8)+255;
+        }
+        cipher.push_back(x2>>24);
+        std::cout << "bin_acode flush cipher.size(): " << cipher.size() << std::endl;
+      }
+      // decode
+      void read(std::istream& is, int n) {
+          cipher.resize(n);
+          is.read(cipher.data(), n);
+          cipher.resize(is.gcount());
+          std::cout << "bin_acode read: ";
+          for(auto byte : cipher)
+            std::cout << u32(byte) << " ";
+          std::cout << std::endl;
+          it = cipher.begin();
+          x1 = 0; x = -1; x2 = 0xffffffff;
+      }
+      int decode(float p) {
+          std::cout << "bin_acode decode p = " << p << std::endl; 
+          std::cout << "x1 = " << x1 << " x = " << x << " x2 = " << x2 << std::endl;
+          u32 pval(pmax * p);
+          int c;
+          if(!p)
+            p = 1;
+          if (x == -1) {
+            x = 0;
+            for (int i=0; i<4; ++i) {
+              c = (it - cipher.begin()) < cipher.size() ? *(it++) : 0;
+              x=(x<<8)+(c&0xff);
+            }
+          }
+          const u32 xmid = x1 + ((x2-x1) >> 12) * p;
+          assert(xmid >= x1 && xmid < x2);
+          int y=0;
+          if (x<=xmid) {
+            y=1;
+            x2=xmid;
+          }
+          else
+            x1=xmid+1;
+          
+          while (((x1^x2)&0xff000000)==0) {
+            x1<<=8;
+            x2=(x2<<8)+255;
+            c = (it - cipher.begin()) < cipher.size() ? *(it++) : 0;
+            x=(x<<8)+c;
+          }
+          std::cout << "bin_acode decode done: " << y << std::endl; 
+          return y;
+        }
+    };
+      
+      /*
     struct binary {
       class coder {
       public:
@@ -125,7 +219,7 @@ namespace pinch {
           ++u;
         }
       }
-    };
+    };*/
   };
 };
 

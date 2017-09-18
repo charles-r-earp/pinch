@@ -14,7 +14,6 @@ class Model(object):
         return NotImplemented
     
     def run(self, argv):
-        assert(len(argv) == 3)
         mode = argv[1]
         if(mode == 'train'):
             fname = argv[2]
@@ -42,6 +41,13 @@ class Model(object):
                     info = 'iterations: {}'.format(i)
                     print(info, end='\r', flush=True)
                     i += 1
+        elif(mode == 'bench'):
+            runs = 1000
+            import time
+            start = time.time()
+            self.bench(runs)
+            end = time.time()
+            print('{} runs/s'.format(runs/(end - start)))
         elif(mode == 'save'):
             folder = argv[2]
             import os

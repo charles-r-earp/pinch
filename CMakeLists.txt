@@ -16,7 +16,7 @@ message("caffe2_include: ${caffe2_include}")
 target_include_directories(pinch PRIVATE caffe2_include "${EIGEN3_INCLUDE_DIR}")
 #find_path(caffe2_lib NAME "libCaffe2_CPU.so" HINTS "/usr/local/lib")
 #message("caffe2_lib: ${caffe2_lib}")
-target_link_libraries(pinch Caffe2_CPU "${protobuf_lib}" glog)
+target_link_libraries(pinch Caffe2_CPU "${protobuf_lib}" glog pthread)
 add_subdirectory(model)
 #add_executable(fileio fileio.cpp)
 # benchmarking and testing on build

@@ -1,45 +1,54 @@
 #include "bin_rnn.netdef"
 #include <caffe2/core/workspace.h>
 #include <google/protobuf/message.h>
+#include <istream>
+#include <ostream>
 
 namespace pinch {
   namespace model {
     class bin_rnn {
       private:
         using Tensor = caffe2::Tensor<caffe2::CPUContext>;
-        //caffe2::CPUContext ctx;
         caffe2::Workspace pred_ws;
-        //static const int ntrain_batches=1;
-        //static const int trainT=bin_rnn_netdef::trainT;
-        //caffe2::NetDef pred_init_net, pred_net;
         caffe2::NetBase *pred_init_net = 0, *pred_net = 0;
-        float *pred_data = 0, *pred_softmax = 0;
-        //std::vector<int> bits;
-        //bool pred_loaded;
+        float *pred_data = 0, *pred_tanh = 0;
       public:
         bin_rnn() {
           caffe2::NetDef net;
           net.ParseFromString(bin_rnn_netdef::pred_init_net);
           pred_init_net = pred_ws.CreateNet(net);
+          assert(pred_init_net);
+        }
+        void read(std::istream& is) {
+          
+        }
+        void write(std::ostream& os) {
+            
         }
         float operator()(int bit) {
+          return 0.5;
+          std::cout << "bin_rnn operator()" << std::endl;
           if(bit == -1) {
-            pred_init_net->Run();
+            std::cout << "bin_rnn operator() bit == -1" << std::endl;
+            //pred_init_net->Run();
+            std::cout << "pred_init_net: " << pred_init_net << std::endl;
             if(!pred_net) {
+              std::cout << "bin_rnn !pred_net" << std::endl;
               caffe2::NetDef net;
               net.ParseFromString(bin_rnn_netdef::pred_net);
               pred_net = pred_ws.CreateNet(net);
+              assert(pred_net);
               pred_data = pred_ws.GetBlob("data")->GetMutable<Tensor>()->mutable_data<float>();
               assert(pred_data);
+              pred_tanh = pred_ws.GetBlob("tanh")->GetMutable<Tensor>()->mutable_data<float>();
+              assert(pred_tanh);
             }
             return 0.5;
           }
           else {
-            pred_data[!bit] = 0; pred_data[bit] = 1;
+            pred_data[0] = bit ? 1 : -1;
             pred_net->Run();
-            if(!pred_softmax)
-              pred_softmax = pred_ws.GetBlob("softmax")->GetMutable<Tensor>()->mutable_data<float>();
-            return pred_softmax[1];
+            return (pred_tanh[0] + 1) / 2.0f;
           }
         }
     };
