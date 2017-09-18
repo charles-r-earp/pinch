@@ -2,9 +2,7 @@
 #include <cassert>
 #include <istream>
 #include <ostream>
-
-
-//#include <typeinfo>
+#include <iomanip>
 #include <iostream>
 
 namespace pinch {
@@ -84,14 +82,19 @@ namespace pinch {
         int c = in.get();
         int bit = -1;
         u32 p = coder::pmax*model(bit);
+        int u = 0;
         while (in) {
-          ++length;
           for(int i = 7; i >= 0; --i) {
             bit = (c>>i)&1;
             e.encode(bit, out, p);
             p = coder::pmax*model(bit);
           }
           c = in.get();
+          if (u % 1000 == 0) {
+            std::cout << std::setprecision(1) << std::fixed << float(100*u)/length << "%\r";
+            std::cout.flush();
+          }
+          ++u;
         } 
         e.flush(out);
       }
@@ -106,7 +109,8 @@ namespace pinch {
         assert(length > 0);
         int bit = -1, c;
         u32 p = coder::pmax*model(bit);
-        while(length-->0) {
+        int u = 0;
+        while(u<length) {
           c = 0;
           for(int i = 7; i >= 0; --i) {
             bit = d.decode(in, p);
@@ -114,6 +118,11 @@ namespace pinch {
             c |= bit<<i;
           }
           out.put(c);
+          if (u % 1000 == 0) {
+            std::cout << std::setprecision(1) << std::fixed << float(100*u)/length << "%\r";
+            std::cout.flush();
+          }
+          ++u;
         }
       }
     };

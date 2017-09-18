@@ -1,12 +1,8 @@
-file(GLOB_RECURSE models "*.py")
+set(models bin_rnn.py)
 foreach(model "${models}")
-    file(RELATIVE_PATH model "${CMAKE_CURRENT_SOURCE_DIR}" "${model}")
-    string(REPLACE "/" ";" path ${model})
-    list(GET path 0 folder)
-    list(GET path -1 model)
+    message("model: ${model}")
     execute_process(
-        COMMAND "python" "${model}" "${CMAKE_CURRENT_BINARY_DIR}/${folder}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${folder}"
+        COMMAND "python" "${model}" "save" "${CMAKE_CURRENT_BINARY_DIR}"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     )
-    
 endforeach(model)
